@@ -23,10 +23,9 @@ The plugin is installed as a local bundle, so it follows the files in this folde
 | Drag a corner | Resize both dimensions at once |
 | Click the reset button | Return to the default 800 × 800 and clear the stored size |
 | Click the fullscreen button | Fill the window below its caption row; click again to restore the previous size |
-| Double-click an edge, or focus it and press Home | Reset both dimensions and clear the stored size |
-| Focus an edge, press an arrow key | Change that dimension by 16 px (hold Shift for 64 px) |
+| Double-click an edge | Reset both dimensions and clear the stored size |
 
-The grips paint nothing; only the cursor and the hover tooltip reveal them. While you drag or nudge with the keyboard, a badge shows the current size as `width × height px`. The edge grips are separators with an accessible label and live `aria-valuenow`, and the two buttons carry `aria-label` plus a hover tooltip, so the feature works without a mouse as well.
+The grips paint nothing; only the cursor and the hover tooltip reveal them. While you drag, a badge shows the current size as `width × height px`. Resizing is mouse-only by design: edges and corners are plain drag surfaces, outside the tab order, and the two header buttons carry `aria-label` plus a hover tooltip. The fullscreen button swaps between browser-style expand and shrink bracket icons as its state changes.
 
 ## Features
 
@@ -34,7 +33,7 @@ The grips paint nothing; only the cursor and the hover tooltip reveal them. Whil
 - A reset button in the header returns to 800 × 800, and a fullscreen button fills the window with one click, starting below the caption row so the window controls stay reachable.
 - The two buttons sit in the header's normal flow, so they never cover the dialog's own actions such as "open config file".
 - The panel can grow until its bottom edge reaches the window bottom while its top stays below the caption row; the chosen size persists in `localStorage` and survives closing Settings and reloading the page.
-- Keyboard resize with arrows, Shift for larger steps, Home to reset, and tooltips on every control.
+- Mouse-only resizing: drag an edge or corner, double-click an edge or click the reset button to go back to 800 × 800.
 - A size badge while adjusting, with localized labels in English and Chinese.
 - Active only at 768 px and wider, where DSH renders the centered desktop modal. DSH's full-viewport layout below that breakpoint is left alone.
 - The grips are separate elements on `<body>`, positioned from the panel's bounding box, so the panel's padding, scrollbars and rounded corners are untouched.
@@ -50,7 +49,7 @@ There is no settings page. The plugin reads and writes two values:
 - Maximum width: viewport width − 48 px
 - Maximum height: from the bottom of the window up to the DSH caption row, so a tall panel slides down instead of covering the window controls
 
-Double-clicking an edge, pressing Home, or clicking the reset button removes the stored values and returns to 800 × 800. Fullscreen is not stored; closing Settings leaves the panel at the last dragged size.
+Double-clicking an edge or clicking the reset button removes the stored values and returns to 800 × 800. Fullscreen is not stored; closing Settings leaves the panel at the last dragged size.
 
 ## Compatibility
 
@@ -61,7 +60,7 @@ The plugin finds the dialog through its public `data-shortcut-modal="settings"` 
 ## How it works
 
 - `index.js` — host half of the bundle; registers nothing at runtime.
-- `client.js` — the feature: injects one `<style>` element that sets two CSS custom properties on the panel, appends eight body-level grips, inserts the two buttons into the dialog header, positions the grips from the panel's bounding box, and handles pointer and keyboard input.
+- `client.js` — the feature: injects one `<style>` element that sets two CSS custom properties on the panel, appends eight body-level grips, inserts the two buttons into the dialog header, positions the grips from the panel's bounding box, and handles pointer input.
 - `cordis.patch.yml` — the bundle patch that adds the plugin row.
 - `locale/en.json`, `locale/zh.json` — plugin title, description and the labels for the grips and buttons.
 

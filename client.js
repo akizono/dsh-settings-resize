@@ -54,9 +54,6 @@ window.__ModuleLoader__.load({
     const PANEL_SELECTOR = 'div[data-shortcut-modal="settings"]';
 
     const EN = {
-      resizeWidth: 'Resize settings panel',
-      resizeHeight: 'Resize settings panel height',
-      resizeCorner: 'Resize settings panel',
       hintWidth: 'Drag to resize, double-click to reset',
       hintHeight: 'Drag to resize, double-click to reset',
       reset: 'Reset to default size',
@@ -64,9 +61,6 @@ window.__ModuleLoader__.load({
       exitFullscreen: 'Restore previous size',
     };
     const ZH = {
-      resizeWidth: '调整设置面板宽度',
-      resizeHeight: '调整设置面板高度',
-      resizeCorner: '调整设置面板宽高',
       hintWidth: '拖动调整宽度，双击恢复默认',
       hintHeight: '拖动调整高度，双击恢复默认',
       reset: '还原窗口默认宽高',
@@ -75,7 +69,10 @@ window.__ModuleLoader__.load({
     };
 
     const ICON_RESET = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
-    const ICON_FULLSCREEN = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+    // Browser-style glyphs (Material icons): corner brackets pointing out
+    // while filling the window, and pointing in while restoring it.
+    const ICON_FULLSCREEN = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg>';
+    const ICON_EXIT_FULLSCREEN = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path></svg>';
 
     const CSS = `
 @media (min-width: ${DESKTOP_MIN_WIDTH}px) {
@@ -370,20 +367,7 @@ window.__ModuleLoader__.load({
         const updateMetrics = () => {
           if (!panel) return;
           const { width, height } = actualSize();
-          const w = Math.round(width);
-          const h = Math.round(height);
-          for (const grip of grips) {
-            if (grip.kind === 'x' || grip.kind === 'l') {
-              grip.node.setAttribute('aria-valuemax', String(Math.round(maxWidth())));
-              grip.node.setAttribute('aria-valuenow', String(w));
-              grip.node.setAttribute('aria-valuetext', w + ' px');
-            } else if (grip.kind === 'y' || grip.kind === 't') {
-              grip.node.setAttribute('aria-valuemax', String(Math.round(maxHeight())));
-              grip.node.setAttribute('aria-valuenow', String(h));
-              grip.node.setAttribute('aria-valuetext', h + ' px');
-            }
-          }
-          if (badge) badge.textContent = w + ' × ' + h + ' px';
+          if (badge) badge.textContent = Math.round(width) + ' × ' + Math.round(height) + ' px';
         };
 
         const setWidth = (width) => {
@@ -411,6 +395,7 @@ window.__ModuleLoader__.load({
           if (!fullscreenButton) return;
           const active = isFullscreen();
           fullscreenButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+          fullscreenButton.innerHTML = active ? ICON_EXIT_FULLSCREEN : ICON_FULLSCREEN;
           fullscreenButton.setAttribute('aria-label', t(active ? 'exitFullscreen' : 'fullscreen'));
           fullscreenButton.dataset.tooltip = t(active ? 'exitFullscreen' : 'fullscreen');
         };
@@ -475,7 +460,6 @@ window.__ModuleLoader__.load({
 
         const bindGrip = (grip, kind) => {
           const { sx, sy } = signsFor(kind);
-          const isEdge = WIDTH_EDGES.includes(kind) || HEIGHT_EDGES.includes(kind);
           let pointerId = null;
           let startX = 0;
           let startY = 0;
@@ -515,9 +499,6 @@ window.__ModuleLoader__.load({
 
           grip.node.addEventListener('pointerdown', (event) => {
             if (event.button !== 0 || pointerId !== null) return;
-            // Focus explicitly (instead of relying on the implicit pointer
-            // focus) so the arrow keys keep working right after a drag.
-            if (isEdge && typeof grip.node.focus === 'function') grip.node.focus({ preventScroll: true });
             pointerId = event.pointerId;
             startX = event.clientX;
             startY = event.clientY;
@@ -542,31 +523,7 @@ window.__ModuleLoader__.load({
             grip.node.addEventListener('lostpointercapture', finishDrag);
           });
 
-          if (isEdge) {
-            grip.node.addEventListener('keydown', (event) => {
-              const horizontal = WIDTH_EDGES.includes(kind);
-              const step = event.shiftKey ? 64 : 16;
-              const forward = horizontal ? 'ArrowRight' : 'ArrowUp';
-              const backward = horizontal ? 'ArrowLeft' : 'ArrowDown';
-              if (event.key === backward || event.key === forward) {
-                event.preventDefault();
-                const rect = panel.getBoundingClientRect();
-                const current = horizontal ? rect.width : rect.height;
-                const next = current + (event.key === forward ? step : -step);
-                if (horizontal) {
-                  setWidth(next);
-                  storeSize(WIDTH_KEY, actualSize().width);
-                } else {
-                  setHeight(next);
-                  storeSize(HEIGHT_KEY, actualSize().height);
-                }
-                flash();
-              } else if (event.key === 'Home') {
-                event.preventDefault();
-                resetSize();
-              }
-            });
-
+          if (WIDTH_EDGES.includes(kind) || HEIGHT_EDGES.includes(kind)) {
             grip.node.addEventListener('dblclick', (event) => {
               event.preventDefault();
               resetSize();
@@ -586,19 +543,8 @@ window.__ModuleLoader__.load({
           if (horizontal || heightEdge) node.dataset.axis = kind;
           else node.dataset.corner = kind;
           node.setAttribute('title', t(horizontal ? 'hintWidth' : 'hintHeight'));
-          if (horizontal || heightEdge) {
-            node.setAttribute('role', 'separator');
-            node.setAttribute('aria-orientation', horizontal ? 'vertical' : 'horizontal');
-            node.setAttribute(
-              'aria-label',
-              t(horizontal ? 'resizeWidth' : 'resizeHeight'),
-            );
-            node.setAttribute('aria-valuemin', String(horizontal ? MIN_WIDTH : MIN_HEIGHT));
-            node.tabIndex = 0;
-          } else {
-            node.setAttribute('aria-hidden', 'true');
-            node.tabIndex = -1;
-          }
+          node.setAttribute('aria-hidden', 'true');
+          node.tabIndex = -1;
           return { node, kind };
         };
 

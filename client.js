@@ -6,7 +6,7 @@
  * width: 800px; height: min(800px, ...) }`). This module makes its size
  * user-adjustable without touching any installed file:
  *
- * - a right, a bottom and four corner grips are mounted on `<body>`, just
+ * - four edge grips and four corner grips are mounted on `<body>`, just
  *   outside the panel's edges, and positioned from the panel's own bounding
  *   box (no layout of the panel is mutated, so the stock dialog looks and
  *   scrolls as before); the grips paint nothing, only the cursor changes;
@@ -45,6 +45,8 @@ window.__ModuleLoader__.load({
     const VIEWPORT_GUTTER = 48;
     const DESKTOP_MIN_WIDTH = 768;
     const GRIP_SIZE = 12;
+    const WIDTH_EDGES = ['x', 'l'];
+    const HEIGHT_EDGES = ['y', 't'];
     const GRIP_CLASS = 'dsh-settings-resize-grip';
     const BADGE_CLASS = 'dsh-settings-resize-badge';
     const CONTROLS_CLASS = 'dsh-settings-resize-controls';
@@ -110,12 +112,14 @@ window.__ModuleLoader__.load({
     -webkit-tap-highlight-color: transparent;
   }
 
-  .${GRIP_CLASS}[data-axis='x'] {
+  .${GRIP_CLASS}[data-axis='x'],
+  .${GRIP_CLASS}[data-axis='l'] {
     width: ${GRIP_SIZE}px;
     cursor: col-resize;
   }
 
-  .${GRIP_CLASS}[data-axis='y'] {
+  .${GRIP_CLASS}[data-axis='y'],
+  .${GRIP_CLASS}[data-axis='t'] {
     height: ${GRIP_SIZE}px;
     cursor: row-resize;
   }
@@ -315,13 +319,15 @@ window.__ModuleLoader__.load({
           for (const grip of grips) {
             const node = grip.node;
             const kind = grip.kind;
-            if (kind === 'x') {
+            if (kind === 'x' || kind === 'l') {
               node.style.top = Math.round(rect.top) + GRIP_SIZE + 'px';
-              node.style.left = Math.round(rect.right) + 'px';
+              node.style.left =
+                Math.round(kind === 'x' ? rect.right : rect.left - GRIP_SIZE) + 'px';
               node.style.height = Math.max(1, Math.round(rect.height) - GRIP_SIZE * 2) + 'px';
-            } else if (kind === 'y') {
+            } else if (kind === 'y' || kind === 't') {
               node.style.left = Math.round(rect.left) + GRIP_SIZE + 'px';
-              node.style.top = Math.round(rect.bottom) + 'px';
+              node.style.top =
+                Math.round(kind === 'y' ? rect.bottom : rect.top - GRIP_SIZE) + 'px';
               node.style.width = Math.max(1, Math.round(rect.width) - GRIP_SIZE * 2) + 'px';
             } else {
               const left = kind === 'tl' || kind === 'bl' ? rect.left - GRIP_SIZE : rect.right;
@@ -342,17 +348,16 @@ window.__ModuleLoader__.load({
           const { width, height } = actualSize();
           const w = Math.round(width);
           const h = Math.round(height);
-          const gripX = grips.find((grip) => grip.kind === 'x');
-          const gripY = grips.find((grip) => grip.kind === 'y');
-          if (gripX) {
-            gripX.node.setAttribute('aria-valuemax', String(Math.round(maxWidth())));
-            gripX.node.setAttribute('aria-valuenow', String(w));
-            gripX.node.setAttribute('aria-valuetext', w + ' px');
-          }
-          if (gripY) {
-            gripY.node.setAttribute('aria-valuemax', String(Math.round(maxHeight())));
-            gripY.node.setAttribute('aria-valuenow', String(h));
-            gripY.node.setAttribute('aria-valuetext', h + ' px');
+          for (const grip of grips) {
+            if (grip.kind === 'x' || grip.kind === 'l') {
+              grip.node.setAttribute('aria-valuemax', String(Math.round(maxWidth())));
+              grip.node.setAttribute('aria-valuenow', String(w));
+              grip.node.setAttribute('aria-valuetext', w + ' px');
+            } else if (grip.kind === 'y' || grip.kind === 't') {
+              grip.node.setAttribute('aria-valuemax', String(Math.round(maxHeight())));
+              grip.node.setAttribute('aria-valuenow', String(h));
+              grip.node.setAttribute('aria-valuetext', h + ' px');
+            }
           }
           if (badge) badge.textContent = w + ' × ' + h + ' px';
         };
@@ -431,12 +436,14 @@ window.__ModuleLoader__.load({
         };
 
         /**
-         * @param {'x' | 'y' | 'tl' | 'tr' | 'bl' | 'br'} kind
+         * @param {'x' | 'l' | 'y' | 't' | 'tl' | 'tr' | 'bl' | 'br'} kind
          * @returns {{ sx: number, sy: number }}
          */
         const signsFor = (kind) => {
           if (kind === 'x') return { sx: 1, sy: 0 };
+          if (kind === 'l') return { sx: -1, sy: 0 };
           if (kind === 'y') return { sx: 0, sy: 1 };
+          if (kind === 't') return { sx: 0, sy: -1 };
           const sx = kind === 'tl' || kind === 'bl' ? -1 : 1;
           const sy = kind === 'tl' || kind === 'tr' ? -1 : 1;
           return { sx, sy };
@@ -444,7 +451,7 @@ window.__ModuleLoader__.load({
 
         const bindGrip = (grip, kind) => {
           const { sx, sy } = signsFor(kind);
-          const isEdge = kind === 'x' || kind === 'y';
+          const isEdge = WIDTH_EDGES.includes(kind) || HEIGHT_EDGES.includes(kind);
           let pointerId = null;
           let startX = 0;
           let startY = 0;
@@ -494,7 +501,9 @@ window.__ModuleLoader__.load({
             startWidth = rect.width;
             startHeight = rect.height;
             root.setAttribute(STATE_ATTR, 'dragging');
-            root.setAttribute(DRAG_ATTR, kind === 'x' ? 'x' : kind === 'y' ? 'y' : isNwse(kind) ? 'nwse' : 'nesw');
+            const dragCursor =
+              sx !== 0 && sy !== 0 ? (isNwse(kind) ? 'nwse' : 'nesw') : sx !== 0 ? 'x' : 'y';
+            root.setAttribute(DRAG_ATTR, dragCursor);
             try {
               grip.node.setPointerCapture(pointerId);
             } catch {
@@ -511,15 +520,16 @@ window.__ModuleLoader__.load({
 
           if (isEdge) {
             grip.node.addEventListener('keydown', (event) => {
+              const horizontal = WIDTH_EDGES.includes(kind);
               const step = event.shiftKey ? 64 : 16;
-              const forward = kind === 'x' ? 'ArrowRight' : 'ArrowDown';
-              const backward = kind === 'x' ? 'ArrowLeft' : 'ArrowUp';
+              const forward = horizontal ? 'ArrowRight' : 'ArrowUp';
+              const backward = horizontal ? 'ArrowLeft' : 'ArrowDown';
               if (event.key === backward || event.key === forward) {
                 event.preventDefault();
                 const rect = panel.getBoundingClientRect();
-                const current = kind === 'x' ? rect.width : rect.height;
+                const current = horizontal ? rect.width : rect.height;
                 const next = current + (event.key === forward ? step : -step);
-                if (kind === 'x') {
+                if (horizontal) {
                   setWidth(next);
                   storeSize(WIDTH_KEY, actualSize().width);
                 } else {
@@ -547,18 +557,19 @@ window.__ModuleLoader__.load({
         const makeGrip = (kind) => {
           const node = document.createElement('div');
           node.className = GRIP_CLASS;
-          if (kind === 'x') node.dataset.axis = 'x';
-          else if (kind === 'y') node.dataset.axis = 'y';
+          const horizontal = WIDTH_EDGES.includes(kind);
+          const heightEdge = HEIGHT_EDGES.includes(kind);
+          if (horizontal || heightEdge) node.dataset.axis = kind;
           else node.dataset.corner = kind;
-          node.setAttribute('title', t('hintWidth'));
-          if (kind === 'x' || kind === 'y') {
+          node.setAttribute('title', t(horizontal ? 'hintWidth' : 'hintHeight'));
+          if (horizontal || heightEdge) {
             node.setAttribute('role', 'separator');
-            node.setAttribute('aria-orientation', kind === 'x' ? 'vertical' : 'horizontal');
+            node.setAttribute('aria-orientation', horizontal ? 'vertical' : 'horizontal');
             node.setAttribute(
               'aria-label',
-              t(kind === 'x' ? 'resizeWidth' : 'resizeHeight'),
+              t(horizontal ? 'resizeWidth' : 'resizeHeight'),
             );
-            node.setAttribute('aria-valuemin', String(kind === 'x' ? MIN_WIDTH : MIN_HEIGHT));
+            node.setAttribute('aria-valuemin', String(horizontal ? MIN_WIDTH : MIN_HEIGHT));
             node.tabIndex = 0;
           } else {
             node.setAttribute('aria-hidden', 'true');
@@ -593,7 +604,7 @@ window.__ModuleLoader__.load({
           detach();
           panel = element;
 
-          const kinds = ['x', 'y', 'tl', 'tr', 'bl', 'br'];
+          const kinds = [...WIDTH_EDGES, ...HEIGHT_EDGES, 'tl', 'tr', 'bl', 'br'];
           grips = kinds.map((kind) => makeGrip(kind));
           for (const grip of grips) document.body.appendChild(grip.node);
 

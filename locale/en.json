@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Resizable settings panel",
+    "description": "Adds a drag grip to the right edge of the settings panel, so you can make it wider (or narrower) and the width is remembered. Double-click the grip to go back to 800 px."
+  }
+}

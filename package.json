@@ -1,0 +1,63 @@
+{
+  "name": "dsh-settings-resize",
+  "version": "0.1.0",
+  "description": "Make the DeepSeek Harness Settings dialog resizable: drag its right edge, and the width is remembered.",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "deepseek",
+    "harness",
+    "settings",
+    "resize",
+    "resizable",
+    "panel",
+    "width",
+    "modal",
+    "ui",
+    "web-ui"
+  ],
+  "engines": {
+    "node": ">=22.19.0 || >=24.0.0",
+    "dsh": ">=0.1.0-rc.8 <0.3.0-0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akizono/dsh-settings-resize.git"
+  },
+  "homepage": "https://github.com/akizono/dsh-settings-resize#readme",
+  "bugs": {
+    "url": "https://github.com/akizono/dsh-settings-resize/issues"
+  },
+  "author": "akizono",
+  "license": "MIT"
+}

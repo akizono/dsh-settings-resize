@@ -82,7 +82,19 @@ window.__ModuleLoader__.load({
   div[data-shortcut-modal="settings"] {
     width: var(${WIDTH_VAR}, ${DEFAULT_WIDTH}px) !important;
     height: var(${HEIGHT_VAR}, ${DEFAULT_HEIGHT}px) !important;
-    max-height: calc(100vh - ${VIEWPORT_GUTTER}px) !important;
+    /* Never taller than the area below the caption row. Once the panel needs
+       more than the symmetric room, this margin slides it down so its bottom
+       edge reaches the window bottom while its top stays below the caption. */
+    max-height: calc(100vh - var(--dsh-frame-chrome-top, 0px)) !important;
+    margin-top: max(
+      0px,
+      calc(
+        min(
+            var(${HEIGHT_VAR}, ${DEFAULT_HEIGHT}px),
+            100vh - var(--dsh-frame-chrome-top, 0px)
+          ) + 2 * var(--dsh-frame-chrome-top, 0px) - 100vh
+      )
+    ) !important;
   }
 
   /* The mask starts below the caption row, so the panel does too: filling the
@@ -296,8 +308,15 @@ window.__ModuleLoader__.load({
         let flashTimer = 0;
         let stopDrags = [];
 
+        const chromeTop = () => {
+          if (typeof window.getComputedStyle !== 'function') return 0;
+          const value = Number.parseFloat(
+            window.getComputedStyle(root).getPropertyValue('--dsh-frame-chrome-top'),
+          );
+          return Number.isFinite(value) ? value : 0;
+        };
         const maxWidth = () => Math.max(MIN_WIDTH, window.innerWidth - VIEWPORT_GUTTER);
-        const maxHeight = () => Math.max(MIN_HEIGHT, window.innerHeight - VIEWPORT_GUTTER);
+        const maxHeight = () => Math.max(MIN_HEIGHT, window.innerHeight - chromeTop());
         const clampWidth = (width) => Math.min(Math.max(Math.round(width), MIN_WIDTH), maxWidth());
         const clampHeight = (height) => Math.min(Math.max(Math.round(height), MIN_HEIGHT), maxHeight());
         const actualSize = () => {
@@ -316,6 +335,12 @@ window.__ModuleLoader__.load({
           const rect = panel.getBoundingClientRect();
           if (rect.width < 1 || rect.height < 1) return;
 
+          const safeTop = chromeTop();
+          const safeBottom = window.innerHeight - GRIP_SIZE;
+          const clampY = (value) => Math.min(Math.max(value, safeTop), safeBottom);
+          const topEdgeY = clampY(rect.top - GRIP_SIZE);
+          const bottomEdgeY = clampY(rect.bottom);
+
           for (const grip of grips) {
             const node = grip.node;
             const kind = grip.kind;
@@ -326,12 +351,11 @@ window.__ModuleLoader__.load({
               node.style.height = Math.max(1, Math.round(rect.height) - GRIP_SIZE * 2) + 'px';
             } else if (kind === 'y' || kind === 't') {
               node.style.left = Math.round(rect.left) + GRIP_SIZE + 'px';
-              node.style.top =
-                Math.round(kind === 'y' ? rect.bottom : rect.top - GRIP_SIZE) + 'px';
+              node.style.top = Math.round(kind === 'y' ? bottomEdgeY : topEdgeY) + 'px';
               node.style.width = Math.max(1, Math.round(rect.width) - GRIP_SIZE * 2) + 'px';
             } else {
               const left = kind === 'tl' || kind === 'bl' ? rect.left - GRIP_SIZE : rect.right;
-              const top = kind === 'tl' || kind === 'tr' ? rect.top - GRIP_SIZE : rect.bottom;
+              const top = kind === 'tl' || kind === 'tr' ? topEdgeY : bottomEdgeY;
               node.style.left = Math.round(left) + 'px';
               node.style.top = Math.round(top) + 'px';
             }

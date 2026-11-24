@@ -19,7 +19,7 @@ The plugin is installed as a local bundle, so it follows the files in this folde
 | Gesture | Effect |
 | --- | --- |
 | Drag the right or left edge | Resize the width from 560 px up to the viewport width − 48 px |
-| Drag the bottom or top edge | Resize the height from 420 px up to the viewport height − 48 px |
+| Drag the bottom or top edge | Resize the height from 420 px down to the window bottom; the top stops below the DSH caption row |
 | Drag a corner | Resize both dimensions at once |
 | Click the reset button | Return to the default 800 × 800 and clear the stored size |
 | Click the fullscreen button | Fill the window below its caption row; click again to restore the previous size |
@@ -33,7 +33,7 @@ The grips paint nothing; only the cursor and the hover tooltip reveal them. Whil
 - Drag the left or right edge for width, the top or bottom edge for height, and any corner for both.
 - A reset button in the header returns to 800 × 800, and a fullscreen button fills the window with one click, starting below the caption row so the window controls stay reachable.
 - The two buttons sit in the header's normal flow, so they never cover the dialog's own actions such as "open config file".
-- The chosen size persists in `localStorage` and survives closing Settings and reloading the page.
+- The panel can grow until its bottom edge reaches the window bottom while its top stays below the caption row; the chosen size persists in `localStorage` and survives closing Settings and reloading the page.
 - Keyboard resize with arrows, Shift for larger steps, Home to reset, and tooltips on every control.
 - A size badge while adjusting, with localized labels in English and Chinese.
 - Active only at 768 px and wider, where DSH renders the centered desktop modal. DSH's full-viewport layout below that breakpoint is left alone.
@@ -47,7 +47,8 @@ There is no settings page. The plugin reads and writes two values:
 - Storage keys: `dsh.settings-resize.width` and `dsh.settings-resize.height`
 - Default size: 800 × 800 px
 - Minimum size: 560 × 420 px
-- Maximum size: viewport size − 48 px on each axis
+- Maximum width: viewport width − 48 px
+- Maximum height: from the bottom of the window up to the DSH caption row, so a tall panel slides down instead of covering the window controls
 
 Double-clicking an edge, pressing Home, or clicking the reset button removes the stored values and returns to 800 × 800. Fullscreen is not stored; closing Settings leaves the panel at the last dragged size.
 

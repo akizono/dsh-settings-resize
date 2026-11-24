@@ -6,18 +6,20 @@
  * width: 800px; height: min(800px, ...) }`). This module makes its size
  * user-adjustable without touching any installed file:
  *
- * - two grips are mounted on `<body>`, just outside the panel's right and
- *   bottom edges, and positioned from the panel's own bounding box (no layout
- *   of the panel is mutated, so the stock dialog looks and scrolls as before);
- * - dragging a grip changes the width or height, keeping the panel centered,
+ * - a right, a bottom and four corner grips are mounted on `<body>`, just
+ *   outside the panel's edges, and positioned from the panel's own bounding
+ *   box (no layout of the panel is mutated, so the stock dialog looks and
+ *   scrolls as before); the grips paint nothing, only the cursor changes;
+ * - dragging an edge or corner changes the size, keeping the panel centered,
  *   between 560×420 and the window minus 48px;
- * - two buttons sit next to the dialog's close button: one restores the
- *   shipped 800×800, one fills the window;
+ * - two buttons join the dialog's header row, left of the close button and
+ *   after the dialog's own actions: one restores the shipped 800×800, one
+ *   fills the part of the window the mask covers (below the caption row);
  * - the chosen width and height are stored in `localStorage` and restored on
  *   the next open;
- * - double-click or Home on a grip resets both dimensions;
+ * - double-click or Home on an edge resets both dimensions;
  * - ArrowLeft/ArrowRight resize the width and ArrowUp/ArrowDown the height
- *   (Shift for a bigger step) from the focused grip.
+ *   (Shift for a bigger step) from the focused edge grip.
  *
  * The DOM contract is the panel's `data-shortcut-modal="settings"` attribute,
  * so a future DSH build that renames it simply falls back to the stock panel.
@@ -42,6 +44,7 @@ window.__ModuleLoader__.load({
     const MIN_HEIGHT = 420;
     const VIEWPORT_GUTTER = 48;
     const DESKTOP_MIN_WIDTH = 768;
+    const GRIP_SIZE = 12;
     const GRIP_CLASS = 'dsh-settings-resize-grip';
     const BADGE_CLASS = 'dsh-settings-resize-badge';
     const CONTROLS_CLASS = 'dsh-settings-resize-controls';
@@ -51,6 +54,7 @@ window.__ModuleLoader__.load({
     const EN = {
       resizeWidth: 'Resize settings panel',
       resizeHeight: 'Resize settings panel height',
+      resizeCorner: 'Resize settings panel',
       hintWidth: 'Drag to resize, double-click to reset',
       hintHeight: 'Drag to resize, double-click to reset',
       reset: 'Reset to default size',
@@ -60,6 +64,7 @@ window.__ModuleLoader__.load({
     const ZH = {
       resizeWidth: '调整设置面板宽度',
       resizeHeight: '调整设置面板高度',
+      resizeCorner: '调整设置面板宽高',
       hintWidth: '拖动调整宽度，双击恢复默认',
       hintHeight: '拖动调整高度，双击恢复默认',
       reset: '还原窗口默认宽高',
@@ -78,11 +83,16 @@ window.__ModuleLoader__.load({
     max-height: calc(100vh - ${VIEWPORT_GUTTER}px) !important;
   }
 
+  /* The mask starts below the caption row, so the panel does too: filling the
+     window must not cover the title bar's minimise/maximise/close controls. */
   html[${FULLSCREEN_ATTR}] div[data-shortcut-modal="settings"] {
-    width: 100vw !important;
-    height: 100vh !important;
+    position: fixed !important;
+    inset: var(--dsh-frame-chrome-top, 0px) 0 0 0 !important;
+    width: auto !important;
+    height: auto !important;
     max-width: none !important;
     max-height: none !important;
+    margin: 0 !important;
     border-radius: 0 !important;
   }
 
@@ -101,58 +111,29 @@ window.__ModuleLoader__.load({
   }
 
   .${GRIP_CLASS}[data-axis='x'] {
-    width: 12px;
+    width: ${GRIP_SIZE}px;
     cursor: col-resize;
   }
 
   .${GRIP_CLASS}[data-axis='y'] {
-    height: 12px;
+    height: ${GRIP_SIZE}px;
     cursor: row-resize;
   }
 
-  .${GRIP_CLASS}::before {
-    content: '';
-    position: absolute;
-    background: var(--dsw-alias-label-secondary);
-    /* 0.75 of --dsw-alias-label-secondary keeps the idle bar at >= 3:1
-       against the panel surface (the 3:1 minimum for a control's own
-       indicator) while staying a quiet hairline. */
-    opacity: 0.75;
-    transition: opacity 120ms ease, width 120ms ease, height 120ms ease;
+  .${GRIP_CLASS}[data-corner] {
+    width: ${GRIP_SIZE}px;
+    height: ${GRIP_SIZE}px;
+    z-index: 1002;
   }
 
-  .${GRIP_CLASS}[data-axis='x']::before {
-    top: 50%;
-    left: 0;
-    width: 3px;
-    height: 44px;
-    border-radius: 0 2px 2px 0;
-    transform: translateY(-50%);
+  .${GRIP_CLASS}[data-corner='tl'],
+  .${GRIP_CLASS}[data-corner='br'] {
+    cursor: nwse-resize;
   }
 
-  .${GRIP_CLASS}[data-axis='y']::before {
-    top: 0;
-    left: 50%;
-    width: 44px;
-    height: 3px;
-    border-radius: 0 0 2px 2px;
-    transform: translateX(-50%);
-  }
-
-  .${GRIP_CLASS}[data-axis='x']:hover::before,
-  .${GRIP_CLASS}[data-axis='x']:focus-visible::before,
-  html[${STATE_ATTR}] .${GRIP_CLASS}[data-axis='x']::before {
-    width: 4px;
-    height: 56px;
-    opacity: 1;
-  }
-
-  .${GRIP_CLASS}[data-axis='y']:hover::before,
-  .${GRIP_CLASS}[data-axis='y']:focus-visible::before,
-  html[${STATE_ATTR}] .${GRIP_CLASS}[data-axis='y']::before {
-    width: 56px;
-    height: 4px;
-    opacity: 1;
+  .${GRIP_CLASS}[data-corner='tr'],
+  .${GRIP_CLASS}[data-corner='bl'] {
+    cursor: nesw-resize;
   }
 
   .${GRIP_CLASS}:focus-visible {
@@ -161,11 +142,11 @@ window.__ModuleLoader__.load({
   }
 
   .${CONTROLS_CLASS} {
-    position: fixed;
-    z-index: 1002;
+    flex: none;
     display: flex;
     align-items: center;
     gap: 4px;
+    align-self: flex-start;
   }
 
   .${BUTTON_CLASS} {
@@ -246,6 +227,16 @@ window.__ModuleLoader__.load({
     cursor: row-resize !important;
     user-select: none !important;
   }
+
+  html[${DRAG_ATTR}='nwse'] * {
+    cursor: nwse-resize !important;
+    user-select: none !important;
+  }
+
+  html[${DRAG_ATTR}='nesw'] * {
+    cursor: nesw-resize !important;
+    user-select: none !important;
+  }
 }
 `;
 
@@ -292,8 +283,7 @@ window.__ModuleLoader__.load({
         document.head.appendChild(style);
 
         let panel = null;
-        let gripX = null;
-        let gripY = null;
+        let grips = [];
         let controls = null;
         let resetButton = null;
         let fullscreenButton = null;
@@ -313,46 +303,38 @@ window.__ModuleLoader__.load({
         };
         const isFullscreen = () => root.hasAttribute(FULLSCREEN_ATTR);
 
-        /** Aligns the body-level grips, controls and badge with the panel box. */
+        /**
+         * Aligns the body-level grips with the panel box. The edge grips leave
+         * the corner squares to the corner grips so their cursors never fight.
+         */
         const place = () => {
           if (!panel) return;
           const rect = panel.getBoundingClientRect();
           if (rect.width < 1 || rect.height < 1) return;
 
-          if (gripX) {
-            gripX.style.top = Math.round(rect.top) + 'px';
-            gripX.style.left = Math.round(rect.right) + 'px';
-            gripX.style.height = Math.max(1, Math.round(rect.height) - 12) + 'px';
+          for (const grip of grips) {
+            const node = grip.node;
+            const kind = grip.kind;
+            if (kind === 'x') {
+              node.style.top = Math.round(rect.top) + GRIP_SIZE + 'px';
+              node.style.left = Math.round(rect.right) + 'px';
+              node.style.height = Math.max(1, Math.round(rect.height) - GRIP_SIZE * 2) + 'px';
+            } else if (kind === 'y') {
+              node.style.left = Math.round(rect.left) + GRIP_SIZE + 'px';
+              node.style.top = Math.round(rect.bottom) + 'px';
+              node.style.width = Math.max(1, Math.round(rect.width) - GRIP_SIZE * 2) + 'px';
+            } else {
+              const left = kind === 'tl' || kind === 'bl' ? rect.left - GRIP_SIZE : rect.right;
+              const top = kind === 'tl' || kind === 'tr' ? rect.top - GRIP_SIZE : rect.bottom;
+              node.style.left = Math.round(left) + 'px';
+              node.style.top = Math.round(top) + 'px';
+            }
           }
-          if (gripY) {
-            gripY.style.left = Math.round(rect.left) + 'px';
-            gripY.style.top = Math.round(rect.bottom) + 'px';
-            gripY.style.width = Math.max(1, Math.round(rect.width) - 12) + 'px';
-          }
-          if (controls) {
-            const close = closeBox(rect);
-            controls.style.top = Math.round(close.top) + 'px';
-            controls.style.right = Math.round(window.innerWidth - close.left + 6) + 'px';
-          }
+
           if (badge) {
             badge.style.right = Math.round(window.innerWidth - rect.right + 18) + 'px';
             badge.style.top = Math.round(rect.bottom - 44) + 'px';
           }
-        };
-
-        /**
-         * The close button's header row gives the seating for the two buttons:
-         * they sit to its left, mirroring its 28px pill. Falls back to the
-         * panel's own header padding when the structure is not the expected one.
-         */
-        const closeBox = (rect) => {
-          const header = panel.children && panel.children[2];
-          const close = header && header.lastElementChild;
-          if (close && typeof close.getBoundingClientRect === 'function' && close.tagName === 'BUTTON') {
-            const box = close.getBoundingClientRect();
-            if (box.width > 0 && box.height > 0) return { top: box.top, left: box.left };
-          }
-          return { top: rect.top + 20, left: rect.right - 42 };
         };
 
         const updateMetrics = () => {
@@ -360,15 +342,17 @@ window.__ModuleLoader__.load({
           const { width, height } = actualSize();
           const w = Math.round(width);
           const h = Math.round(height);
+          const gripX = grips.find((grip) => grip.kind === 'x');
+          const gripY = grips.find((grip) => grip.kind === 'y');
           if (gripX) {
-            gripX.setAttribute('aria-valuemax', String(Math.round(maxWidth())));
-            gripX.setAttribute('aria-valuenow', String(w));
-            gripX.setAttribute('aria-valuetext', w + ' px');
+            gripX.node.setAttribute('aria-valuemax', String(Math.round(maxWidth())));
+            gripX.node.setAttribute('aria-valuenow', String(w));
+            gripX.node.setAttribute('aria-valuetext', w + ' px');
           }
           if (gripY) {
-            gripY.setAttribute('aria-valuemax', String(Math.round(maxHeight())));
-            gripY.setAttribute('aria-valuenow', String(h));
-            gripY.setAttribute('aria-valuetext', h + ' px');
+            gripY.node.setAttribute('aria-valuemax', String(Math.round(maxHeight())));
+            gripY.node.setAttribute('aria-valuenow', String(h));
+            gripY.node.setAttribute('aria-valuetext', h + ' px');
           }
           if (badge) badge.textContent = w + ' × ' + h + ' px';
         };
@@ -423,9 +407,9 @@ window.__ModuleLoader__.load({
             exitFullscreen();
           } else {
             root.setAttribute(FULLSCREEN_ATTR, '');
-            syncFullscreenButton();
             place();
             updateMetrics();
+            syncFullscreenButton();
           }
           flash();
         };
@@ -446,23 +430,34 @@ window.__ModuleLoader__.load({
           return button;
         };
 
-        const bindGrip = (grip, axis) => {
-          let pointerId = null;
-          let start = 0;
-          let startSize = 0;
+        /**
+         * @param {'x' | 'y' | 'tl' | 'tr' | 'bl' | 'br'} kind
+         * @returns {{ sx: number, sy: number }}
+         */
+        const signsFor = (kind) => {
+          if (kind === 'x') return { sx: 1, sy: 0 };
+          if (kind === 'y') return { sx: 0, sy: 1 };
+          const sx = kind === 'tl' || kind === 'bl' ? -1 : 1;
+          const sy = kind === 'tl' || kind === 'tr' ? -1 : 1;
+          return { sx, sy };
+        };
 
-          const setSize = (size) => {
-            if (axis === 'x') setWidth(size);
-            else setHeight(size);
-          };
+        const bindGrip = (grip, kind) => {
+          const { sx, sy } = signsFor(kind);
+          const isEdge = kind === 'x' || kind === 'y';
+          let pointerId = null;
+          let startX = 0;
+          let startY = 0;
+          let startWidth = 0;
+          let startHeight = 0;
 
           const onPointerMove = (event) => {
             if (pointerId === null || event.pointerId !== pointerId) return;
-            // The panel stays centered on both axes, so its edge travels half
+            // The panel stays centered on both axes, so an edge travels half
             // of the size change: size = start + 2 * delta makes the dragged
-            // edge follow the pointer exactly.
-            const delta = axis === 'x' ? event.clientX - start : event.clientY - start;
-            setSize(startSize + 2 * delta);
+            // edge (or corner) follow the pointer exactly.
+            if (sx !== 0) setWidth(startWidth + sx * 2 * (event.clientX - startX));
+            if (sy !== 0) setHeight(startHeight + sy * 2 * (event.clientY - startY));
           };
 
           const removeDragListeners = () => {
@@ -470,7 +465,7 @@ window.__ModuleLoader__.load({
             window.removeEventListener('pointerup', finishDrag);
             window.removeEventListener('pointercancel', finishDrag);
             window.removeEventListener('blur', onBlur);
-            grip.removeEventListener('lostpointercapture', finishDrag);
+            grip.node.removeEventListener('lostpointercapture', finishDrag);
           };
 
           const finishDrag = (event) => {
@@ -481,28 +476,27 @@ window.__ModuleLoader__.load({
             root.removeAttribute(STATE_ATTR);
             root.removeAttribute(DRAG_ATTR);
             const { width, height } = actualSize();
-            if (axis === 'x') {
-              if (Math.round(width) !== Math.round(startSize)) storeSize(WIDTH_KEY, width);
-            } else if (Math.round(height) !== Math.round(startSize)) {
-              storeSize(HEIGHT_KEY, height);
-            }
+            if (sx !== 0 && Math.round(width) !== Math.round(startWidth)) storeSize(WIDTH_KEY, width);
+            if (sy !== 0 && Math.round(height) !== Math.round(startHeight)) storeSize(HEIGHT_KEY, height);
           };
 
           const onBlur = () => finishDrag();
 
-          grip.addEventListener('pointerdown', (event) => {
+          grip.node.addEventListener('pointerdown', (event) => {
             if (event.button !== 0 || pointerId !== null) return;
             // Focus explicitly (instead of relying on the implicit pointer
             // focus) so the arrow keys keep working right after a drag.
-            if (typeof grip.focus === 'function') grip.focus({ preventScroll: true });
+            if (isEdge && typeof grip.node.focus === 'function') grip.node.focus({ preventScroll: true });
             pointerId = event.pointerId;
-            start = axis === 'x' ? event.clientX : event.clientY;
+            startX = event.clientX;
+            startY = event.clientY;
             const rect = panel.getBoundingClientRect();
-            startSize = axis === 'x' ? rect.width : rect.height;
+            startWidth = rect.width;
+            startHeight = rect.height;
             root.setAttribute(STATE_ATTR, 'dragging');
-            root.setAttribute(DRAG_ATTR, axis);
+            root.setAttribute(DRAG_ATTR, kind === 'x' ? 'x' : kind === 'y' ? 'y' : isNwse(kind) ? 'nwse' : 'nesw');
             try {
-              grip.setPointerCapture(pointerId);
+              grip.node.setPointerCapture(pointerId);
             } catch {
               /* Enhancement only: window-level listeners still track the drag. */
             }
@@ -512,34 +506,65 @@ window.__ModuleLoader__.load({
             window.addEventListener('pointerup', finishDrag);
             window.addEventListener('pointercancel', finishDrag);
             window.addEventListener('blur', onBlur);
-            grip.addEventListener('lostpointercapture', finishDrag);
+            grip.node.addEventListener('lostpointercapture', finishDrag);
           });
 
-          grip.addEventListener('keydown', (event) => {
-            const step = event.shiftKey ? 64 : 16;
-            const forward = axis === 'x' ? 'ArrowRight' : 'ArrowDown';
-            const backward = axis === 'x' ? 'ArrowLeft' : 'ArrowUp';
-            if (event.key === backward || event.key === forward) {
-              event.preventDefault();
-              const rect = panel.getBoundingClientRect();
-              const current = axis === 'x' ? rect.width : rect.height;
-              const next = current + (event.key === forward ? step : -step);
-              setSize(next);
-              const { width, height } = actualSize();
-              storeSize(axis === 'x' ? WIDTH_KEY : HEIGHT_KEY, axis === 'x' ? width : height);
-              flash();
-            } else if (event.key === 'Home') {
+          if (isEdge) {
+            grip.node.addEventListener('keydown', (event) => {
+              const step = event.shiftKey ? 64 : 16;
+              const forward = kind === 'x' ? 'ArrowRight' : 'ArrowDown';
+              const backward = kind === 'x' ? 'ArrowLeft' : 'ArrowUp';
+              if (event.key === backward || event.key === forward) {
+                event.preventDefault();
+                const rect = panel.getBoundingClientRect();
+                const current = kind === 'x' ? rect.width : rect.height;
+                const next = current + (event.key === forward ? step : -step);
+                if (kind === 'x') {
+                  setWidth(next);
+                  storeSize(WIDTH_KEY, actualSize().width);
+                } else {
+                  setHeight(next);
+                  storeSize(HEIGHT_KEY, actualSize().height);
+                }
+                flash();
+              } else if (event.key === 'Home') {
+                event.preventDefault();
+                resetSize();
+              }
+            });
+
+            grip.node.addEventListener('dblclick', (event) => {
               event.preventDefault();
               resetSize();
-            }
-          });
-
-          grip.addEventListener('dblclick', (event) => {
-            event.preventDefault();
-            resetSize();
-          });
+            });
+          }
 
           stopDrags.push(() => finishDrag());
+        };
+
+        const isNwse = (kind) => kind === 'tl' || kind === 'br';
+
+        const makeGrip = (kind) => {
+          const node = document.createElement('div');
+          node.className = GRIP_CLASS;
+          if (kind === 'x') node.dataset.axis = 'x';
+          else if (kind === 'y') node.dataset.axis = 'y';
+          else node.dataset.corner = kind;
+          node.setAttribute('title', t('hintWidth'));
+          if (kind === 'x' || kind === 'y') {
+            node.setAttribute('role', 'separator');
+            node.setAttribute('aria-orientation', kind === 'x' ? 'vertical' : 'horizontal');
+            node.setAttribute(
+              'aria-label',
+              t(kind === 'x' ? 'resizeWidth' : 'resizeHeight'),
+            );
+            node.setAttribute('aria-valuemin', String(kind === 'x' ? MIN_WIDTH : MIN_HEIGHT));
+            node.tabIndex = 0;
+          } else {
+            node.setAttribute('aria-hidden', 'true');
+            node.tabIndex = -1;
+          }
+          return { node, kind };
         };
 
         const detach = () => {
@@ -551,9 +576,9 @@ window.__ModuleLoader__.load({
             resizeObserver = null;
           }
           window.removeEventListener('resize', onWindowResize);
-          for (const node of [gripX, gripY, controls, badge]) if (node) node.remove();
-          gripX = null;
-          gripY = null;
+          for (const grip of grips) grip.node.remove();
+          grips = [];
+          for (const node of [controls, badge]) if (node) node.remove();
           controls = null;
           resetButton = null;
           fullscreenButton = null;
@@ -568,30 +593,18 @@ window.__ModuleLoader__.load({
           detach();
           panel = element;
 
-          gripX = document.createElement('div');
-          gripX.className = GRIP_CLASS;
-          gripX.dataset.axis = 'x';
-          gripX.setAttribute('role', 'separator');
-          gripX.setAttribute('aria-orientation', 'vertical');
-          gripX.setAttribute('aria-label', t('resizeWidth'));
-          gripX.setAttribute('aria-valuemin', String(MIN_WIDTH));
-          gripX.setAttribute('title', t('hintWidth'));
-          gripX.tabIndex = 0;
-
-          gripY = document.createElement('div');
-          gripY.className = GRIP_CLASS;
-          gripY.dataset.axis = 'y';
-          gripY.setAttribute('role', 'separator');
-          gripY.setAttribute('aria-orientation', 'horizontal');
-          gripY.setAttribute('aria-label', t('resizeHeight'));
-          gripY.setAttribute('aria-valuemin', String(MIN_HEIGHT));
-          gripY.setAttribute('title', t('hintHeight'));
-          gripY.tabIndex = 0;
+          const kinds = ['x', 'y', 'tl', 'tr', 'bl', 'br'];
+          grips = kinds.map((kind) => makeGrip(kind));
+          for (const grip of grips) document.body.appendChild(grip.node);
 
           badge = document.createElement('span');
           badge.className = BADGE_CLASS;
           badge.setAttribute('aria-hidden', 'true');
+          document.body.appendChild(badge);
 
+          // The two buttons belong to the dialog's header row. Sitting before
+          // the close button in normal flow keeps them clear of the header's
+          // own actions ("open config file") instead of covering them.
           controls = document.createElement('div');
           controls.className = CONTROLS_CLASS;
           resetButton = makeButton(t('reset'), t('reset'), ICON_RESET, resetSize);
@@ -600,13 +613,14 @@ window.__ModuleLoader__.load({
           controls.appendChild(resetButton);
           controls.appendChild(fullscreenButton);
 
-          document.body.appendChild(gripX);
-          document.body.appendChild(gripY);
-          document.body.appendChild(badge);
-          document.body.appendChild(controls);
+          const header = element.children && element.children[2];
+          if (header) {
+            const close = header.lastElementChild;
+            if (close) header.insertBefore(controls, close);
+            else header.appendChild(controls);
+          }
 
-          bindGrip(gripX, 'x');
-          bindGrip(gripY, 'y');
+          for (const grip of grips) bindGrip(grip, grip.kind);
 
           resizeObserver = new ResizeObserver(() => {
             place();

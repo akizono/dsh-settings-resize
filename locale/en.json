@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Resizable settings panel",
-    "description": "Lets you resize the settings panel by dragging its right or bottom edge, add reset and fullscreen buttons next to the close button, and remembers the chosen size."
+    "description": "Lets you resize the settings panel by dragging its right edge, bottom edge or any corner, adds reset and fullscreen buttons next to the close button, and remembers the chosen size."
   }
 }

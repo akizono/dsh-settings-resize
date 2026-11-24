@@ -18,7 +18,7 @@ The plugin is installed as a local bundle, so it follows the files in this folde
 
 | Gesture | Effect |
 | --- | --- |
-| Hover the panel's right edge | The grip indicator becomes clearly visible |
+| Point at the panel's right edge | The indicator brightens and a tooltip names the action |
 | Drag the grip | Resize from 560 px up to the viewport width − 48 px |
 | Double-click the grip, or focus it and press Home | Reset to 800 px and clear the stored width |
 | Focus the grip, press ArrowLeft / ArrowRight | Change width by 16 px (hold Shift for 64 px) |

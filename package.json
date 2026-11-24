@@ -1,7 +1,7 @@
 {
   "name": "dsh-settings-resize",
-  "version": "0.1.0",
-  "description": "Make the DeepSeek Harness Settings dialog resizable: drag its right edge, and the width is remembered.",
+  "version": "0.2.0",
+  "description": "Make the DeepSeek Harness Settings dialog resizable in width and height, with reset and fullscreen buttons, remembering the chosen size.",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -30,6 +30,8 @@
     "resizable",
     "panel",
     "width",
+    "height",
+    "fullscreen",
     "modal",
     "ui",
     "web-ui"
